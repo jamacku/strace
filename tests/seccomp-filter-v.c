@@ -2,7 +2,7 @@
  * Check verbose decoding of seccomp SECCOMP_SET_MODE_FILTER.
  *
  * Copyright (c) 2015-2016 Dmitry V. Levin <ldv@strace.io>
- * Copyright (c) 2016-2023 The strace developers.
+ * Copyright (c) 2016-2024 The strace developers.
  * All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
@@ -70,8 +70,7 @@ main(void)
 		"BPF_STMT(BPF_RET|BPF_K, SECCOMP_RET_KILL_THREAD)";
 	struct sock_filter *const filter =
 		tail_memdup(filter_c, sizeof(filter_c));
-	struct sock_filter *const big_filter =
-		tail_alloc(sizeof(*big_filter) * (BPF_MAXINSNS + 1));
+	TAIL_ALLOC_OBJECT_CONST_ARR(struct sock_filter, big_filter, (BPF_MAXINSNS + 1));
 	TAIL_ALLOC_OBJECT_CONST_PTR(struct sock_fprog, prog);
 
 	int fds[2];

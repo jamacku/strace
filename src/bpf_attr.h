@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015-2018 Dmitry V. Levin <ldv@strace.io>
- * Copyright (c) 2018-2023 The strace developers.
+ * Copyright (c) 2018-2024 The strace developers.
  * All rights reserved.
  *
  * SPDX-License-Identifier: LGPL-2.1-or-later
@@ -257,11 +257,13 @@ struct BPF_PROG_QUERY_struct /* query */ {
 struct BPF_RAW_TRACEPOINT_OPEN_struct /* raw_tracepoint */ {
 	uint64_t ATTRIBUTE_ALIGNED(8) name;
 	uint32_t prog_fd;
+	uint32_t dummy;
+	uint64_t ATTRIBUTE_ALIGNED(8) cookie;
 };
 
 # define BPF_RAW_TRACEPOINT_OPEN_struct_size \
-	offsetofend(struct BPF_RAW_TRACEPOINT_OPEN_struct, prog_fd)
-# define expected_BPF_RAW_TRACEPOINT_OPEN_struct_size 12
+	sizeof(struct BPF_RAW_TRACEPOINT_OPEN_struct)
+# define expected_BPF_RAW_TRACEPOINT_OPEN_struct_size 24
 
 struct BPF_BTF_LOAD_struct {
 	uint64_t ATTRIBUTE_ALIGNED(8) btf;
@@ -481,5 +483,14 @@ struct BPF_PROG_BIND_MAP_struct /* prog_bind_map */ {
 # define BPF_PROG_BIND_MAP_struct_size \
 	sizeof(struct BPF_PROG_BIND_MAP_struct)
 # define expected_BPF_PROG_BIND_MAP_struct_size 12
+
+struct BPF_TOKEN_CREATE_struct /* token_create */ {
+	uint32_t flags;
+	uint32_t bpffs_fd;
+};
+
+# define BPF_TOKEN_CREATE_struct_size \
+	sizeof(struct BPF_TOKEN_CREATE_struct)
+# define expected_BPF_TOKEN_CREATE_struct_size 8
 
 #endif /* !STRACE_BPF_ATTR_H */

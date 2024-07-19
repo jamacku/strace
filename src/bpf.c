@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2015-2017 Dmitry V. Levin <ldv@strace.io>
  * Copyright (c) 2017 Quentin Monnet <quentin.monnet@6wind.com>
- * Copyright (c) 2015-2023 The strace developers.
+ * Copyright (c) 2015-2024 The strace developers.
  * All rights reserved.
  *
  * SPDX-License-Identifier: LGPL-2.1-or-later
@@ -1180,6 +1180,15 @@ BEGIN_BPF_CMD_DECODER(BPF_RAW_TRACEPOINT_OPEN)
 	tprint_struct_next();
 	PRINT_FIELD_FD(attr, prog_fd, tcp);
 
+	/*
+	 * cookie field was added in Linux commit v6.10-rc1~153^2~432^2~13^2~2.
+	 */
+	if (len >= offsetofend(struct BPF_RAW_TRACEPOINT_OPEN_struct, cookie)) {
+		tprint_struct_next();
+		tprints_field_name("cookie");
+		PRINT_VAL_X(attr.cookie);
+	}
+
 	tprint_struct_end();
 }
 END_BPF_CMD_DECODER(RVAL_DECODED)
@@ -1597,6 +1606,18 @@ BEGIN_BPF_CMD_DECODER(BPF_PROG_BIND_MAP)
 }
 END_BPF_CMD_DECODER(RVAL_DECODED | RVAL_FD)
 
+BEGIN_BPF_CMD_DECODER(BPF_TOKEN_CREATE)
+{
+	tprint_struct_begin();
+	tprints_field_name("token_create");
+	tprint_struct_begin();
+	PRINT_FIELD_X(attr, flags);
+	tprint_struct_next();
+	PRINT_FIELD_FD(attr, bpffs_fd, tcp);
+	tprint_struct_end();
+}
+END_BPF_CMD_DECODER(RVAL_DECODED | RVAL_FD)
+
 SYS_FUNC(bpf)
 {
 	static const bpf_cmd_decoder_t bpf_cmd_decoders[] = {
@@ -1636,6 +1657,7 @@ SYS_FUNC(bpf)
 		BPF_CMD_ENTRY(BPF_ITER_CREATE),
 		BPF_CMD_ENTRY(BPF_LINK_DETACH),
 		BPF_CMD_ENTRY(BPF_PROG_BIND_MAP),
+		BPF_CMD_ENTRY(BPF_TOKEN_CREATE),
 	};
 
 	const unsigned int cmd = tcp->u_arg[0];

@@ -862,6 +862,7 @@ extern enum sock_proto getfdproto(struct tcb *, int);
 
 extern const char *xlookup(const struct xlat *, const uint64_t);
 extern const char *xlookup_le(const struct xlat *, uint64_t *);
+extern uint64_t xrlookup(const struct xlat *, const char *, uint64_t);
 
 struct dyxlat;
 struct dyxlat *dyxlat_alloc(size_t nmemb, enum xlat_type type);
@@ -1165,6 +1166,9 @@ print_local_array_ex(struct tcb *tcp,
 				   (typeof(upto_)) ARRAY_SIZE(start_addr_)), \
 			     sizeof((start_addr_)[0]), (print_func_),        \
 			     NULL, 0, NULL, NULL)
+
+extern bool
+sequence_truncation_needed(const struct tcb *, unsigned int len);
 
 extern kernel_ulong_t *
 fetch_indirect_syscall_args(struct tcb *, kernel_ulong_t addr, unsigned int n_args);
@@ -1482,6 +1486,7 @@ decode_netlink_ ## name(struct tcb *, const struct nlmsghdr *,		\
 /* End of DECL_NETLINK definition. */
 
 DECL_NETLINK(crypto);
+DECL_NETLINK(generic);
 DECL_NETLINK(netfilter);
 DECL_NETLINK(route);
 DECL_NETLINK(selinux);

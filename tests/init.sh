@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # Copyright (c) 2011-2016 Dmitry V. Levin <ldv@strace.io>
-# Copyright (c) 2011-2023 The strace developers.
+# Copyright (c) 2011-2024 The strace developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -575,9 +575,10 @@ esac
 STRACE_EXE=
 if [ -n "$NAME" ]; then
 	TESTDIR="$NAME.dir"
-	rm -rf -- "$TESTDIR"
-	mkdir -- "$TESTDIR"
-	cd "$TESTDIR"
+	rm -rf -- "$TESTDIR" &&
+	mkdir -- "$TESTDIR" &&
+	cd "$TESTDIR" ||
+	framework_failure_ "Cannot setup $TESTDIR"
 
 	case "$srcdir" in
 		/*) ;;

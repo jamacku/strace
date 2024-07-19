@@ -1,6 +1,6 @@
 #!/bin/sh -ex
 #
-# Copyright (c) 2018-2022 The strace developers.
+# Copyright (c) 2018-2024 The strace developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -142,10 +142,6 @@ case "${STACKTRACE-}" in
 esac
 
 case "${CHECK-}" in
-	coverage)
-		curl -s -S https://codecov.io/bash > codecov.bash
-		chmod u+x codecov.bash
-		;;
 	valgrind)
 		apt_get_install valgrind
 		;;

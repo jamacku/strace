@@ -65,7 +65,7 @@ enum stack_trace_modes stack_trace_mode;
 # define fork() vfork()
 #endif
 
-const unsigned int syscall_trap_sig = SIGTRAP | 0x80;
+static const unsigned int syscall_trap_sig = SIGTRAP | 0x80;
 
 cflag_t cflag = CFLAG_NONE;
 bool followfork;
@@ -144,6 +144,7 @@ static int post_attach_sigstop = TCB_IGNORE_ONE_SIGSTOP;
 #define use_seize (post_attach_sigstop == 0)
 
 static bool detach_on_execve;
+static bool always_show_pid;
 
 static int exit_code;
 static int strace_child;
@@ -310,6 +311,9 @@ Startup:\n\
                  trace process with process id PID, may be repeated\n\
   -u USERNAME, --user=USERNAME\n\
                  run command as USERNAME handling setuid and/or setgid\n\
+                 USERNAME may be a user name or a UID:GID pair, where UID\n\
+                 and GID are numbers. In the latter case, strace does not\n\
+                 perform name lookups.\n\
   --argv0=NAME   set PROG argv[0] to NAME\n\
 \n\
 Tracing:\n\
@@ -375,7 +379,8 @@ Output format:\n\
                  print exit reason of kvm vcpu\n\
   -e decode-fds=SET, --decode-fds=SET\n\
                  what kinds of file descriptor information details to decode\n\
-     details:    dev (device major/minor for block/char device files)\n\
+     details:    dev (device major/minor for block/char device files),\n\
+                 eventfd (associated eventfd object details for eventfds),\n\
                  path (file path),\n\
                  pidfd (associated PID for pidfds),\n\
                  socket (protocol-specific information for socket descriptors),\n\
@@ -466,6 +471,8 @@ Output format:\n\
                  print PIDs in strace's namespace, too\n\
   -Y, --decode-pids=comm\n\
                  print command names associated with PIDs\n\
+  --always-show-pid\n\
+                 show PID prefix also for the process started by strace\n\
 \n\
 Statistics:\n\
   -c, --summary-only\n\
@@ -1169,7 +1176,7 @@ droptcb_verbose(struct tcb *tcp)
 
 /* Returns true when the tracee has to be waited for. */
 static bool
-interrupt_or_stop(struct tcb *tcp)
+detach_or_interrupt_or_stop(struct tcb *tcp)
 {
 	/*
 	 * Linux wrongly insists the child be stopped
@@ -1180,7 +1187,8 @@ interrupt_or_stop(struct tcb *tcp)
 	if (!(tcp->flags & TCB_ATTACHED))
 		return false;
 
-	/* We attached but possibly didn't see the expected SIGSTOP.
+	/*
+	 * We attached but possibly didn't see the expected SIGSTOP yet.
 	 * We must catch exactly one as otherwise the detached process
 	 * would be left stopped (process state T).
 	 */
@@ -1309,7 +1317,7 @@ detach_interrupted_or_stopped(struct tcb *tcp, int status)
 static void
 detach(struct tcb *tcp)
 {
-	if (!interrupt_or_stop(tcp))
+	if (!detach_or_interrupt_or_stop(tcp))
 		goto drop;
 
 	/*
@@ -1515,6 +1523,28 @@ startup_attach(void)
 	}
 }
 
+static bool
+is_uid_gid_pair(const char *username, uid_t *uid_ptr, gid_t *gid_ptr)
+{
+	const char *colon = strchr(username, ':');
+	if (!colon)
+		return false;
+	if (uid_ptr) {
+		const unsigned long long max_uid =
+			zero_extend_signed_to_ull((uid_t) -1) - 1;
+		*uid_ptr = (uid_t) string_to_uint_ex(username, NULL,
+						     max_uid, ":");
+	}
+	if (gid_ptr) {
+		const unsigned long long max_gid =
+			zero_extend_signed_to_ull((gid_t) -1) - 1;
+		*gid_ptr = (gid_t) string_to_uint_ex(colon + 1, NULL,
+						     max_gid, ":");
+	}
+	return true;
+}
+
+
 static void
 maybe_init_seccomp_filter(void)
 {
@@ -1556,11 +1586,19 @@ exec_or_die(void)
 
 	if (username != NULL) {
 		/*
-		 * It is important to set groups before we
-		 * lose privileges on setuid.
+		 * It is important to set groups before we lose privileges on
+		 * setuid.  Unless UID:GID was passed, which is relevant e.g.
+		 * for statically linked builds, initgroups() is invoked.
+		 * Otherwise, to avoid leaking groups, setgroups() is invoked
+		 * to set an empty list of supplementary groups.
 		 */
-		if (initgroups(username, run_gid) < 0)
-			perror_msg_and_die("initgroups");
+		if (is_uid_gid_pair(username, NULL, NULL)) {
+			if (setgroups(0, NULL) < 0)
+				perror_msg_and_die("setgroups");
+		} else {
+			if (initgroups(username, run_gid) < 0)
+				perror_msg_and_die("initgroups");
+		}
 		if (setregid(run_gid, params->run_egid) < 0)
 			perror_msg_and_die("setregid");
 
@@ -2329,6 +2367,7 @@ init(int argc, char *argv[])
 		GETOPT_TIPS,
 		GETOPT_ARGV0,
 		GETOPT_STACK_TRACE_FRAME_LIMIT,
+		GETOPT_ALWAYS_SHOW_PID,
 
 		GETOPT_QUAL_TRACE,
 		GETOPT_QUAL_TRACE_FD,
@@ -2394,6 +2433,7 @@ init(int argc, char *argv[])
 		{ "seccomp-bpf",	no_argument,	   0, GETOPT_SECCOMP },
 		{ "tips",		optional_argument, 0, GETOPT_TIPS },
 		{ "argv0",		required_argument, 0, GETOPT_ARGV0 },
+		{ "always-show-pid",	no_argument,	   0, GETOPT_ALWAYS_SHOW_PID },
 
 		{ "trace",	required_argument, 0, GETOPT_QUAL_TRACE },
 		{ "trace-fds",	required_argument, 0, GETOPT_QUAL_TRACE_FD },
@@ -2689,6 +2729,9 @@ init(int argc, char *argv[])
 		case GETOPT_ARGV0:
 			argv0 = optarg;
 			break;
+		case GETOPT_ALWAYS_SHOW_PID:
+			always_show_pid = true;
+			break;
 		case GETOPT_QUAL_SECONTEXT:
 			qualify_secontext(optarg ? optarg : secontext_qual);
 			break;
@@ -2965,18 +3008,27 @@ init(int argc, char *argv[])
 
 	/* See if they want to run as another user. */
 	if (username != NULL) {
-		struct passwd *pent;
-
 		if (getuid() != 0 || geteuid() != 0) {
 			error_msg_and_die("You must be root to use "
 					  "the -u/--username option");
 		}
-		pent = getpwnam(username);
-		if (pent == NULL) {
-			error_msg_and_die("Cannot find user '%s'", username);
+
+		/*
+		 * If the username is in the form of UID:GID,
+		 * do not perform name lookups.
+		 */
+		if (is_uid_gid_pair(username, &run_uid, &run_gid)) {
+			if (run_uid == (uid_t) -1 || run_gid == (gid_t) -1)
+				error_msg_and_die("Invalid UID:GID pair '%s'",
+						  username);
+		} else {
+			struct passwd *pent = getpwnam(username);
+			if (pent == NULL)
+				error_msg_and_die("Cannot find user '%s'",
+						  username);
+			run_uid = pent->pw_uid;
+			run_gid = pent->pw_gid;
 		}
-		run_uid = pent->pw_uid;
-		run_gid = pent->pw_gid;
 	} else {
 		run_uid = getuid();
 		run_gid = getgid();
@@ -3131,9 +3183,11 @@ init(int argc, char *argv[])
 	 * -ff: no (every pid has its own file); or
 	 * -f: yes (there can be more pids in the future); or
 	 * -p PID1,PID2: yes (there are already more than one pid)
+	 * --always-show-pid: yes
 	 */
-	print_pid_pfx = outfname && !output_separately &&
-		(followfork || nprocs > 1);
+	print_pid_pfx = (outfname && !output_separately &&
+			 (followfork || nprocs > 1)) ||
+			always_show_pid;
 }
 
 static struct tcb *
@@ -3232,7 +3286,7 @@ cleanup(int fatal_sig)
 			kill(tcp->pid, SIGCONT);
 			kill(tcp->pid, fatal_sig);
 		}
-		if (interrupt_or_stop(tcp))
+		if (detach_or_interrupt_or_stop(tcp))
 			++num_to_wait;
 		else
 			droptcb_verbose(tcp);

@@ -2,7 +2,7 @@
  * Check decoding of seccomp SECCOMP_SET_MODE_FILTER.
  *
  * Copyright (c) 2016 Dmitry V. Levin <ldv@strace.io>
- * Copyright (c) 2016-2023 The strace developers.
+ * Copyright (c) 2016-2024 The strace developers.
  * All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
@@ -20,7 +20,7 @@
 int
 main(void)
 {
-	struct sock_filter *const filter = tail_alloc(sizeof(*filter) * N);
+	TAIL_ALLOC_OBJECT_CONST_ARR(struct sock_filter, filter, N);
 	const void *const efault = tail_alloc(1);
 	TAIL_ALLOC_OBJECT_CONST_PTR(struct sock_fprog, prog);
 	long rc;

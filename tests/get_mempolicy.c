@@ -1,7 +1,7 @@
 /*
  * Check decoding of get_mempolicy syscall.
  *
- * Copyright (c) 2016-2023 Dmitry V. Levin <ldv@strace.io>
+ * Copyright (c) 2016-2024 Dmitry V. Levin <ldv@strace.io>
  * All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
@@ -23,8 +23,7 @@
 static void
 print_nodes(unsigned long maxnode)
 {
-	unsigned long *const nodemask =
-		tail_alloc(sizeof(*nodemask) * NLONGS(maxnode));
+	TAIL_ALLOC_OBJECT_CONST_ARR(unsigned long, nodemask, NLONGS(maxnode));
 
 	if (syscall(__NR_get_mempolicy, 0, nodemask, maxnode, 0, 0)) {
 		printf("get_mempolicy(NULL, %p, %lu, NULL, 0) = %s\n",

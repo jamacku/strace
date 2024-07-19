@@ -1,3 +1,39 @@
+Noteworthy changes in release ?.? (????-??-??)
+==============================================
+
+* Improvements
+  * Implemented --decode-fds=eventfd option to retrieve eventfd object details
+    associated with eventfd file descriptors.
+  * Implemented decoding of NETLINK_GENERIC nlctrl protocol.
+  * Implemented decoding of F_DUPFD_QUERY fcntl.
+  * Implemented decoding of mseal syscall.
+  * Updated decoding of statx and prctl syscalls.
+  * Updated decoding of BPF_RAW_TRACEPOINT_OPEN bpf command.
+  * Updated lists of BPF_*, IORING_*, KEXEC_*, KEY_*, LANDLOCK_*, PR_*, STATX_*,
+    TCP_*, TEE_*, V4L2_*, and *_MAGIC constants.
+  * Updated lists of ioctl commands from Linux 6.10.
+
+* Bug fixes
+  * Worked around a bug introduced in Linux 6.5 that affected system call
+    tampering on riscv64.
+
+Noteworthy changes in release 6.9 (2024-05-14)
+==============================================
+
+* Improvements
+  * Implemented --always-show-pid option.
+  * The --user|-u option has learned to recognize numeric UID:GID pair, allowing
+    e.g. statically-built strace to be used without invoking nss plugins.
+  * Implemented decoding of IORING_REGISTER_SYNC_CANCEL,
+    IORING_REGISTER_FILE_ALLOC_RANGE, IORING_REGISTER_PBUF_STATUS,
+    IORING_REGISTER_NAPI, and IORING_UNREGISTER_NAPI opcodes of
+    io_uring_register syscall.
+  * Implemented decoding of BPF_TOKEN_CREATE bpf syscall command.
+  * Updated decoding of io_uring_register and pidfd_send_signal syscalls.
+  * Updated lists of BPF_*, CAN_*, IORING_*, KEY_*, LSM_*, MPOL_*, NT_*, RWF_*,
+    PIDFD_*, PTP_*, TCP_*, and *_MAGIC constants.
+  * Updated lists of ioctl commands from Linux 6.9.
+
 Noteworthy changes in release 6.8 (2024-03-20)
 ==============================================
 

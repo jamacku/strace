@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2016 Dmitry V. Levin <ldv@strace.io>
- * Copyright (c) 2016-2023 The strace developers.
+ * Copyright (c) 2016-2024 The strace developers.
  * All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
@@ -71,7 +71,7 @@ main(void)
 	for (unsigned int i = 0; i < LEN; ++i)
 		buf[i] = i;
 
-	struct iovec *iov = tail_alloc(sizeof(*iov) * LEN);
+	TAIL_ALLOC_OBJECT_VAR_ARR(struct iovec, iov, LEN);
 	for (unsigned int i = 0; i < LEN; ++i) {
 		buf[i] = i;
 		iov[i].iov_base = &buf[i];
